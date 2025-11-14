@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Jug Challenge</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes wave {
+            0% { transform: translateX(0) rotate(0deg); }
+            100% { transform: translateX(-100%) rotate(360deg); }
+        }
+        @keyframes wave-reverse {
+            0% { transform: translateX(0) rotate(0deg); }
+            100% { transform: translateX(100%) rotate(-360deg); }
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fadeInUp {
+            animation: fadeInUp 0.8s ease-out;
+        }
+        .water-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            transition: height 1s ease-in-out;
+            overflow: hidden;
+        }
+        .water-fill::before,
+        .water-fill::after {
+            content: "";
+            position: absolute;
+            left: -50%;
+            top: -70%;
+            width: 200%;
+            height: 200%;
+            background-color: black; 
+            border-radius: 45% 48% 42% 40%;
+            z-index: 5;
+        }
+        .water-fill::before {
+            animation: wave 10s linear infinite;
+            opacity: 0.1;
+        }
+        .water-fill::after {
+            animation: wave-reverse 8s linear infinite;
+            opacity: 0.15;
+        }
+        .text-overlay {
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Constants ---
+        const JUG_A_CAPACITY = 5;
+        const JUG_B_CAPACITY = 3;
+        const TARGET_AMOUNT = 4;
+
+        // Jug Component
+        const Jug = ({ label, current, capacity }) => {
+            const waterPercentage = (current / capacity) * 100;
+            return (
+                <div className="flex flex-col items-center">
+                    <div className="relative w-36 sm:w-48 h-72 bg-black border-2 border-gray-800 rounded-t-xl rounded-b-3xl overflow-hidden">
+                        <div className="water-fill" style={{ height: `${waterPercentage}%` }}></div>
+                        <div className="text-overlay absolute inset-0 flex flex-col items-center justify-center p-4">
+                            <span className="text-7xl font-bold text-white mix-blend-difference">
+                                {current}
+                                <span className="text-5xl">L</span>
+                            </span>
+                        </div>
+                        <div className="absolute bottom-4 left-0 right-0 text-center z-10">
+                            <p className="text-gray-500 font-medium">{label} / {capacity}L</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Win Modal Component
+        const WinModal = ({ moves, onReset }) => {
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+                    <div className="flex flex-col items-center gap-6 p-10 sm:p-12 bg-gray-950 rounded-2xl shadow-2xl border border-gray-800 w-full max-w-md">
+                        <h2 className="text-3xl sm:text-4xl font-bold text-white text-center">You Solved It!</h2>
+                        <p className="text-xl text-gray-400">You reached {TARGET_AMOUNT}L in <span className="font-bold text-white">{moves}</span> moves.</p>
+                        <button onClick={onReset} className="w-full px-8 py-4 mt-4 text-lg font-semibold text-black bg-white rounded-lg shadow-lg transform transition-all hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-500">Play Again</button>
+                    </div>
+                </div>
+            );
+        };
+
+        // Action Button Component
+        const ActionButton = ({ onClick, disabled, children }) => {
+            return (
+                <button onClick={onClick} disabled={disabled} className="px-4 py-4 font-semibold text-gray-300 bg-transparent border border-gray-800 rounded-lg shadow-md transition-all duration-300 hover:bg-gray-900 hover:text-white hover:border-gray-700 hover:scale-[1.03] hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-gray-600 disabled:opacity-30 disabled:cursor-not-allowed disabled:transform-none">
+                    {children}
+                </button>
+            );
+        };
+
+        // Main App Component
+        function App() {
+            const [jugA, setJugA] = useState(0);
+            const [jugB, setJugB] = useState(0);
+            const [moves, setMoves] = useState(0);
+            const [isWon, setIsWon] = useState(false);
+            const [message, setMessage] = useState("Start by filling a jug!");
+
+            useEffect(() => {
+                if (isWon) return;
+                if (jugA === TARGET_AMOUNT || jugB === TARGET_AMOUNT) {
+                    setIsWon(true);
+                    setMessage(`Solved in ${moves} moves!`);
+                }
+            }, [jugA, jugB, moves, isWon]);
+
+            const handleAction = (action) => {
+                if (isWon) return;
+                let newA = jugA;
+                let newB = jugB;
+                let newMessage = "";
+
+                switch (action) {
+                    case 'FILL_A':
+                        newA = JUG_A_CAPACITY;
+                        newMessage = "Filled Jug A (5L)";
+                        break;
+                    case 'FILL_B':
+                        newB = JUG_B_CAPACITY;
+                        newMessage = "Filled Jug B (3L)";
+                        break;
+                    case 'EMPTY_A':
+                        newA = 0;
+                        newMessage = "Emptied Jug A (5L)";
+                        break;
+                    case 'EMPTY_B':
+                        newB = 0;
+                        newMessage = "Emptied Jug B (3L)";
+                        break;
+                    case 'A_TO_B': {
+                        const spaceInB = JUG_B_CAPACITY - newB;
+                        const pourAmount = Math.min(newA, spaceInB);
+                        newA -= pourAmount;
+                        newB += pourAmount;
+                        newMessage = `Poured ${pourAmount}L from A to B`;
+                        break;
+                    }
+                    case 'B_TO_A': {
+                        const spaceInA = JUG_A_CAPACITY - newA;
+                        const pourAmount = Math.min(newB, spaceInA);
+                        newB -= pourAmount;
+                        newA += pourAmount;
+                        newMessage = `Poured ${pourAmount}L from B to A`;
+                        break;
+                    }
+                }
+
+                if (newA !== jugA || newB !== jugB) {
+                    setJugA(newA);
+                    setJugB(newB);
+                    setMoves(m => m + 1);
+                    setMessage(newMessage);
+                }
+            };
+
+            const handleReset = () => {
+                setJugA(0);
+                setJugB(0);
+                setMoves(0);
+                setIsWon(false);
+                setMessage("Game reset. Good luck!");
+            };
+
+            return (
+                <>
+                    {isWon && <WinModal moves={moves} onReset={handleReset} />}
+                    <main className="relative min-h-screen w-full flex flex-col items-center justify-center p-6 sm:p-12 bg-black text-white font-sans overflow-hidden">
+                        <header className="text-center mb-12">
+                            <h1 className="text-5xl sm:text-6xl font-bold text-white tracking-tighter animate-fadeInUp">Water Jug Challenge</h1>
+                            <p className="text-lg text-gray-400 mt-2 animate-fadeInUp" style={{ animationDelay: '100ms' }}>Get exactly <span className="font-semibold text-white">{TARGET_AMOUNT}L</span> in one jug.</p>
+                        </header>
+
+                        <div className="flex gap-12 mb-12">
+                            <div className="text-center">
+                                <div className="text-5xl font-bold text-white">{moves}</div>
+                                <div className="text-sm text-gray-500 tracking-widest mt-1">MOVES</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-5xl font-bold text-white">{TARGET_AMOUNT}L</div>
+                                <div className="text-sm text-gray-500 tracking-widest mt-1">TARGET</div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-center gap-8 sm:gap-16 mb-12">
+                            <Jug label="Jug A" current={jugA} capacity={JUG_A_CAPACITY} />
+                            <Jug label="Jug B" current={jugB} capacity={JUG_B_CAPACITY} />
+                        </div>
+
+                        <div className="h-8 mb-12 text-center">
+                            <p className="text-lg text-gray-400 transition-opacity duration-300">{message}</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+                            <ActionButton onClick={() => handleAction('FILL_A')} disabled={isWon}>Fill Jug A</ActionButton>
+                            <ActionButton onClick={() => handleAction('FILL_B')} disabled={isWon}>Fill Jug B</ActionButton>
+                            <ActionButton onClick={() => handleAction('EMPTY_A')} disabled={isWon}>Empty Jug A</ActionButton>
+                            <ActionButton onClick={() => handleAction('EMPTY_B')} disabled={isWon}>Empty Jug B</ActionButton>
+                            <ActionButton onClick={() => handleAction('A_TO_B')} disabled={isWon}>Pour A → B</ActionButton>
+                            <ActionButton onClick={() => handleAction('B_TO_A')} disabled={isWon}>Pour B → A</ActionButton>
+                        </div>
+
+                        <button onClick={handleReset} className="mt-12 text-gray-600 hover:text-white transition-all duration-300 hover:scale-105">Reset Game</button>
+                    </main>
+                </>
+            );
+        }
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
